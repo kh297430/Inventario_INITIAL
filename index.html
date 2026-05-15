@@ -1,0 +1,722 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>인벤타리오 자동 각인기</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #f0f2f5;
+      --card: #ffffff;
+      --primary: #1d4ed8;
+      --primary-light: #eff6ff;
+      --primary-border: #bfdbfe;
+      --text: #1e293b;
+      --muted: #64748b;
+      --border: #e2e8f0;
+      --warn-bg: #fff7ed;
+      --warn-border: #f97316;
+      --warn-text: #9a3412;
+      --green: #16a34a;
+      --radius: 14px;
+      --shadow: 0 2px 12px rgba(0,0,0,0.07);
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Pretendard', 'Noto Sans KR', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding-bottom: 60px;
+    }
+
+    /* ── Header ── */
+    header {
+      background: var(--primary);
+      color: white;
+      padding: 22px 20px 18px;
+      text-align: center;
+    }
+    header h1 { font-size: 1.25rem; font-weight: 800; letter-spacing: -0.5px; }
+    header p  { font-size: 0.78rem; opacity: 0.75; margin-top: 5px; }
+
+    /* ── Breadcrumb ── */
+    #breadcrumb {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 12px 16px;
+      font-size: 0.8rem;
+      color: var(--muted);
+      background: white;
+      border-bottom: 1px solid var(--border);
+      flex-wrap: wrap;
+    }
+    .bc-item { font-weight: 600; color: var(--text); }
+    .bc-item.active { color: var(--primary); }
+    .bc-sep { opacity: 0.4; font-size: 0.7rem; }
+
+    /* ── Main layout ── */
+    #main { padding: 16px; max-width: 520px; margin: 0 auto; }
+
+    /* ── Section card ── */
+    .step-card {
+      background: var(--card);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 18px;
+      margin-bottom: 14px;
+      border: 2px solid transparent;
+      transition: border-color 0.2s;
+    }
+    .step-card.active { border-color: var(--primary); }
+    .step-card.done   { border-color: #bbf7d0; background: #f0fdf4; }
+    .step-card.locked { opacity: 0.45; pointer-events: none; }
+
+    .step-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 14px;
+    }
+    .step-title {
+      font-size: 0.72rem;
+      font-weight: 800;
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .step-card.active .step-title { color: var(--primary); }
+    .step-card.done  .step-title  { color: var(--green); }
+
+    .step-selected-badge {
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: var(--green);
+      background: #dcfce7;
+      padding: 3px 10px;
+      border-radius: 20px;
+      display: none;
+    }
+    .step-card.done .step-selected-badge { display: inline-block; }
+
+    /* ── Button grid ── */
+    .btn-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .choice-btn {
+      padding: 10px 16px;
+      border: 1.5px solid var(--border);
+      border-radius: 10px;
+      font-size: 0.92rem;
+      font-weight: 600;
+      background: white;
+      color: var(--text);
+      cursor: pointer;
+      transition: all 0.15s;
+      font-family: inherit;
+      line-height: 1.2;
+      touch-action: manipulation;
+    }
+    .choice-btn:active { transform: scale(0.96); }
+    .choice-btn:hover  { border-color: var(--primary); color: var(--primary); background: var(--primary-light); }
+    .choice-btn.selected {
+      background: var(--primary);
+      border-color: var(--primary);
+      color: white;
+    }
+
+    /* ── Change button ── */
+    .change-btn {
+      font-size: 0.75rem;
+      padding: 4px 10px;
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      background: white;
+      color: var(--muted);
+      cursor: pointer;
+      font-family: inherit;
+      font-weight: 600;
+      touch-action: manipulation;
+    }
+    .change-btn:active { opacity: 0.6; }
+
+    /* ── Result ── */
+    #result-section { display: none; }
+
+    .result-title {
+      text-align: center;
+      font-size: 1.05rem;
+      font-weight: 800;
+      color: var(--primary);
+      background: var(--primary-light);
+      border: 1.5px solid var(--primary-border);
+      border-radius: var(--radius);
+      padding: 14px;
+      margin-bottom: 14px;
+    }
+
+    .metrics-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+    .metric-card {
+      background: var(--card);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 20px 12px;
+      text-align: center;
+    }
+    .metric-label {
+      font-size: 0.72rem;
+      font-weight: 800;
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+    .metric-value {
+      font-size: 3rem;
+      font-weight: 900;
+      color: var(--text);
+      line-height: 1;
+    }
+    .metric-unit { font-size: 0.78rem; color: var(--muted); margin-top: 6px; }
+
+    /* ── Warning ── */
+    #warning-box {
+      background: var(--warn-bg);
+      border: 2px solid var(--warn-border);
+      border-radius: var(--radius);
+      padding: 16px 18px;
+      margin-bottom: 14px;
+      display: none;
+    }
+    .warn-title { font-size: 0.95rem; font-weight: 800; color: var(--warn-border); margin-bottom: 8px; }
+    .warn-body  { font-size: 0.95rem; color: var(--warn-text); line-height: 1.55; }
+
+    /* ── Reset ── */
+    #reset-btn {
+      width: 100%;
+      padding: 14px;
+      background: white;
+      border: 1.5px solid var(--border);
+      border-radius: 10px;
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: var(--muted);
+      cursor: pointer;
+      font-family: inherit;
+      margin-bottom: 14px;
+      touch-action: manipulation;
+    }
+    #reset-btn:active { background: var(--bg); }
+
+    /* ── Edit sheet link ── */
+    #edit-link {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 13px;
+      background: #f0fdf4;
+      border: 1.5px solid #bbf7d0;
+      border-radius: 10px;
+      font-size: 0.9rem;
+      font-weight: 700;
+      color: var(--green);
+      text-decoration: none;
+      touch-action: manipulation;
+    }
+    #edit-link:active { opacity: 0.7; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>인벤타리오 자동 각인기</h1>
+  <p>커버 → 색상 → 박 순서로 선택하세요</p>
+</header>
+
+<div id="breadcrumb">
+  <span id="bc-cover" class="bc-item">커버</span>
+  <span class="bc-sep">›</span>
+  <span id="bc-color" class="bc-item">색상</span>
+  <span class="bc-sep">›</span>
+  <span id="bc-foil"  class="bc-item">박</span>
+</div>
+
+<div id="main">
+
+  <!-- STEP 1: 커버 -->
+  <div class="step-card active" id="card-cover">
+    <div class="step-header">
+      <span class="step-title">STEP 1 &nbsp;커버 선택</span>
+      <span class="step-selected-badge" id="badge-cover"></span>
+      <button class="change-btn" id="change-cover" onclick="resetFrom('cover')" style="display:none">변경</button>
+    </div>
+    <div class="btn-grid" id="grid-cover"></div>
+  </div>
+
+  <!-- STEP 2: 색상 -->
+  <div class="step-card locked" id="card-color">
+    <div class="step-header">
+      <span class="step-title">STEP 2 &nbsp;색상 선택</span>
+      <span class="step-selected-badge" id="badge-color"></span>
+      <button class="change-btn" id="change-color" onclick="resetFrom('color')" style="display:none">변경</button>
+    </div>
+    <div class="btn-grid" id="grid-color"></div>
+  </div>
+
+  <!-- STEP 3: 박 -->
+  <div class="step-card locked" id="card-foil">
+    <div class="step-header">
+      <span class="step-title">STEP 3 &nbsp;박 종류 선택</span>
+      <span class="step-selected-badge" id="badge-foil"></span>
+      <button class="change-btn" id="change-foil" onclick="resetFrom('foil')" style="display:none">변경</button>
+    </div>
+    <div class="btn-grid" id="grid-foil"></div>
+  </div>
+
+  <!-- Result -->
+  <div id="result-section">
+    <div class="result-title" id="result-title"></div>
+    <div class="metrics-row">
+      <div class="metric-card">
+        <div class="metric-label">Pressure</div>
+        <div class="metric-value" id="val-pressure">—</div>
+        <div class="metric-unit">압력</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Delay</div>
+        <div class="metric-value" id="val-delay">—</div>
+        <div class="metric-unit">딜레이</div>
+      </div>
+    </div>
+    <div id="warning-box">
+      <div class="warn-title">⚠️ 특이사항 확인</div>
+      <div class="warn-body" id="val-note"></div>
+    </div>
+    <button id="reset-btn" onclick="resetAll()">↺ 처음부터 다시 선택</button>
+  </div>
+
+  <!-- Edit sheet -->
+  <a id="edit-link" href="https://docs.google.com/spreadsheets/d/19Ok0I5TWUSP4sqDrGg__9nHqh5nhfsNadRQyfSzDJGY/edit?gid=949523535#gid=949523535" target="_blank">
+    ✏️ 구글 시트에서 데이터 수정하기
+  </a>
+
+</div>
+
+<script>
+(function init() {
+
+  /* ── 데이터 ── */
+  const data = [
+    {커버:'글리터',색상:'블랙',박:'불박',Pressure:'40',Delay:'100',특이사항:''},
+    {커버:'글리터',색상:'블랙',박:'유광 금',Pressure:'5',Delay:'20',특이사항:''},
+    {커버:'글리터',색상:'블랙',박:'유광 은',Pressure:'5',Delay:'20',특이사항:''},
+    {커버:'글리터',색상:'블랙',박:'무광 금',Pressure:'5',Delay:'20',특이사항:''},
+    {커버:'글리터',색상:'블랙',박:'무광 은',Pressure:'5',Delay:'20',특이사항:''},
+    {커버:'글리터',색상:'블랙',박:'레드',Pressure:'5',Delay:'20',특이사항:''},
+    {커버:'글리터',색상:'블랙',박:'그린',Pressure:'5',Delay:'20',특이사항:''},
+    {커버:'글리터',색상:'블랙',박:'블랙',Pressure:'5',Delay:'20',특이사항:''},
+    {커버:'글리터',색상:'블랙',박:'블루',Pressure:'5',Delay:'20',특이사항:''},
+    {커버:'글리터',색상:'블랙',박:'크리스탈',Pressure:'20',Delay:'20',특이사항:''},
+    {커버:'글리터',색상:'아이보리',박:'불박',Pressure:'40',Delay:'100',특이사항:''},
+    {커버:'글리터',색상:'아이보리',박:'유광 금',Pressure:'5',Delay:'20',특이사항:''},
+    {커버:'글리터',색상:'아이보리',박:'유광 은',Pressure:'5',Delay:'20',특이사항:''},
+    {커버:'글리터',색상:'아이보리',박:'무광 금',Pressure:'5',Delay:'20',특이사항:''},
+    {커버:'글리터',색상:'아이보리',박:'무광 은',Pressure:'5',Delay:'20',특이사항:''},
+    {커버:'글리터',색상:'아이보리',박:'레드',Pressure:'5',Delay:'20',특이사항:''},
+    {커버:'글리터',색상:'아이보리',박:'그린',Pressure:'5',Delay:'20',특이사항:''},
+    {커버:'글리터',색상:'아이보리',박:'블랙',Pressure:'5',Delay:'20',특이사항:''},
+    {커버:'글리터',색상:'아이보리',박:'블루',Pressure:'5',Delay:'20',특이사항:''},
+    {커버:'글리터',색상:'아이보리',박:'크리스탈',Pressure:'20',Delay:'20',특이사항:''},
+    {커버:'디지털',색상:'레드',박:'불박',Pressure:'60',Delay:'100',특이사항:''},
+    {커버:'디지털',색상:'레드',박:'유광 금',Pressure:'30',Delay:'10',특이사항:''},
+    {커버:'디지털',색상:'레드',박:'유광 은',Pressure:'30',Delay:'10',특이사항:''},
+    {커버:'디지털',색상:'레드',박:'무광 금',Pressure:'20',Delay:'10',특이사항:'압력이 세면 찍힘'},
+    {커버:'디지털',색상:'레드',박:'무광 은',Pressure:'20',Delay:'10',특이사항:'압력이 세면 찍힘'},
+    {커버:'디지털',색상:'레드',박:'레드',Pressure:'30',Delay:'10',특이사항:''},
+    {커버:'디지털',색상:'레드',박:'그린',Pressure:'25',Delay:'10',특이사항:''},
+    {커버:'디지털',색상:'레드',박:'블랙',Pressure:'25',Delay:'10',특이사항:''},
+    {커버:'디지털',색상:'레드',박:'블루',Pressure:'30',Delay:'30',특이사항:''},
+    {커버:'디지털',색상:'레드',박:'크리스탈',Pressure:'35',Delay:'10',특이사항:''},
+    {커버:'디지털',색상:'블루',박:'불박',Pressure:'60',Delay:'100',특이사항:''},
+    {커버:'디지털',색상:'블루',박:'유광 금',Pressure:'30',Delay:'10',특이사항:''},
+    {커버:'디지털',색상:'블루',박:'유광 은',Pressure:'30',Delay:'10',특이사항:''},
+    {커버:'디지털',색상:'블루',박:'무광 금',Pressure:'20',Delay:'10',특이사항:''},
+    {커버:'디지털',색상:'블루',박:'무광 은',Pressure:'20',Delay:'10',특이사항:''},
+    {커버:'디지털',색상:'블루',박:'레드',Pressure:'30',Delay:'10',특이사항:''},
+    {커버:'디지털',색상:'블루',박:'그린',Pressure:'25',Delay:'10',특이사항:''},
+    {커버:'디지털',색상:'블루',박:'블랙',Pressure:'25',Delay:'10',특이사항:''},
+    {커버:'디지털',색상:'블루',박:'블루',Pressure:'30',Delay:'30',특이사항:''},
+    {커버:'디지털',색상:'블루',박:'크리스탈',Pressure:'35',Delay:'10',특이사항:''},
+    {커버:'링클',색상:'카키',박:'불박',Pressure:'55',Delay:'100',특이사항:''},
+    {커버:'링클',색상:'카키',박:'유광 금',Pressure:'30',Delay:'10',특이사항:''},
+    {커버:'링클',색상:'카키',박:'유광 은',Pressure:'30',Delay:'10',특이사항:''},
+    {커버:'링클',색상:'카키',박:'무광 금',Pressure:'30',Delay:'10',특이사항:''},
+    {커버:'링클',색상:'카키',박:'무광 은',Pressure:'30',Delay:'10',특이사항:''},
+    {커버:'링클',색상:'카키',박:'레드',Pressure:'30',Delay:'10',특이사항:''},
+    {커버:'링클',색상:'카키',박:'그린',Pressure:'30',Delay:'10',특이사항:''},
+    {커버:'링클',색상:'카키',박:'블랙',Pressure:'30',Delay:'10',특이사항:''},
+    {커버:'링클',색상:'카키',박:'블루',Pressure:'30',Delay:'10',특이사항:''},
+    {커버:'링클',색상:'카키',박:'크리스탈',Pressure:'50',Delay:'10',특이사항:''},
+    {커버:'링클',색상:'화이트',박:'불박',Pressure:'55',Delay:'100',특이사항:''},
+    {커버:'링클',색상:'화이트',박:'유광 금',Pressure:'30',Delay:'10',특이사항:''},
+    {커버:'링클',색상:'화이트',박:'유광 은',Pressure:'30',Delay:'10',특이사항:''},
+    {커버:'링클',색상:'화이트',박:'무광 금',Pressure:'30',Delay:'10',특이사항:''},
+    {커버:'링클',색상:'화이트',박:'무광 은',Pressure:'30',Delay:'10',특이사항:''},
+    {커버:'링클',색상:'화이트',박:'레드',Pressure:'30',Delay:'10',특이사항:''},
+    {커버:'링클',색상:'화이트',박:'그린',Pressure:'30',Delay:'10',특이사항:''},
+    {커버:'링클',색상:'화이트',박:'블랙',Pressure:'30',Delay:'10',특이사항:''},
+    {커버:'링클',색상:'화이트',박:'블루',Pressure:'30',Delay:'10',특이사항:''},
+    {커버:'링클',색상:'화이트',박:'크리스탈',Pressure:'50',Delay:'10',특이사항:''},
+    {커버:'썸머',색상:'연보라',박:'불박',Pressure:'20',Delay:'100',특이사항:''},
+    {커버:'썸머',색상:'연보라',박:'유광 금',Pressure:'5',Delay:'10',특이사항:''},
+    {커버:'썸머',색상:'연보라',박:'유광 은',Pressure:'5',Delay:'10',특이사항:''},
+    {커버:'썸머',색상:'연보라',박:'무광 금',Pressure:'0',Delay:'10',특이사항:''},
+    {커버:'썸머',색상:'연보라',박:'무광 은',Pressure:'0',Delay:'10',특이사항:''},
+    {커버:'썸머',색상:'연보라',박:'레드',Pressure:'0',Delay:'10',특이사항:''},
+    {커버:'썸머',색상:'연보라',박:'그린',Pressure:'0',Delay:'10',특이사항:''},
+    {커버:'썸머',색상:'연보라',박:'블랙',Pressure:'0',Delay:'10',특이사항:''},
+    {커버:'썸머',색상:'연보라',박:'블루',Pressure:'5',Delay:'10',특이사항:''},
+    {커버:'썸머',색상:'연보라',박:'크리스탈',Pressure:'10',Delay:'10',특이사항:''},
+    {커버:'썸머',색상:'파스텔블루',박:'불박',Pressure:'20',Delay:'100',특이사항:''},
+    {커버:'썸머',색상:'파스텔블루',박:'유광 금',Pressure:'5',Delay:'10',특이사항:''},
+    {커버:'썸머',색상:'파스텔블루',박:'유광 은',Pressure:'5',Delay:'10',특이사항:''},
+    {커버:'썸머',색상:'파스텔블루',박:'무광 금',Pressure:'0',Delay:'10',특이사항:''},
+    {커버:'썸머',색상:'파스텔블루',박:'무광 은',Pressure:'0',Delay:'10',특이사항:''},
+    {커버:'썸머',색상:'파스텔블루',박:'레드',Pressure:'0',Delay:'10',특이사항:''},
+    {커버:'썸머',색상:'파스텔블루',박:'그린',Pressure:'0',Delay:'10',특이사항:''},
+    {커버:'썸머',색상:'파스텔블루',박:'블랙',Pressure:'0',Delay:'10',특이사항:''},
+    {커버:'썸머',색상:'파스텔블루',박:'블루',Pressure:'5',Delay:'10',특이사항:''},
+    {커버:'썸머',색상:'파스텔블루',박:'크리스탈',Pressure:'10',Delay:'10',특이사항:''},
+    {커버:'아모르',색상:'레드',박:'불박',Pressure:'60',Delay:'100',특이사항:''},
+    {커버:'아모르',색상:'레드',박:'유광 금',Pressure:'35',Delay:'10',특이사항:''},
+    {커버:'아모르',색상:'레드',박:'유광 은',Pressure:'40',Delay:'10',특이사항:''},
+    {커버:'아모르',색상:'레드',박:'무광 금',Pressure:'35',Delay:'10',특이사항:''},
+    {커버:'아모르',색상:'레드',박:'무광 은',Pressure:'30',Delay:'10',특이사항:''},
+    {커버:'아모르',색상:'레드',박:'레드',Pressure:'30',Delay:'10',특이사항:''},
+    {커버:'아모르',색상:'레드',박:'그린',Pressure:'30',Delay:'10',특이사항:''},
+    {커버:'아모르',색상:'레드',박:'블랙',Pressure:'30',Delay:'10',특이사항:''},
+    {커버:'아모르',색상:'레드',박:'블루',Pressure:'50',Delay:'10',특이사항:''},
+    {커버:'아모르',색상:'레드',박:'크리스탈',Pressure:'40',Delay:'10',특이사항:''},
+    {커버:'아모르',색상:'브라운',박:'불박',Pressure:'60',Delay:'100',특이사항:''},
+    {커버:'아모르',색상:'브라운',박:'유광 금',Pressure:'35',Delay:'10',특이사항:''},
+    {커버:'아모르',색상:'브라운',박:'유광 은',Pressure:'40',Delay:'10',특이사항:''},
+    {커버:'아모르',색상:'브라운',박:'무광 금',Pressure:'35',Delay:'10',특이사항:''},
+    {커버:'아모르',색상:'브라운',박:'무광 은',Pressure:'30',Delay:'10',특이사항:''},
+    {커버:'아모르',색상:'브라운',박:'레드',Pressure:'30',Delay:'10',특이사항:''},
+    {커버:'아모르',색상:'브라운',박:'그린',Pressure:'50',Delay:'10',특이사항:''},
+    {커버:'아모르',색상:'브라운',박:'블랙',Pressure:'30',Delay:'10',특이사항:''},
+    {커버:'아모르',색상:'브라운',박:'블루',Pressure:'50',Delay:'10',특이사항:''},
+    {커버:'아모르',색상:'브라운',박:'크리스탈',Pressure:'40',Delay:'10',특이사항:''},
+    {커버:'우드',색상:'딥브라운',박:'불박',Pressure:'40',Delay:'100',특이사항:''},
+    {커버:'우드',색상:'딥브라운',박:'유광 금',Pressure:'20',Delay:'10',특이사항:'♥는 40, 10'},
+    {커버:'우드',색상:'딥브라운',박:'유광 은',Pressure:'20',Delay:'10',특이사항:'♥는 40, 10'},
+    {커버:'우드',색상:'딥브라운',박:'무광 금',Pressure:'20',Delay:'10',특이사항:'♥는 40, 10'},
+    {커버:'우드',색상:'딥브라운',박:'무광 은',Pressure:'20',Delay:'10',특이사항:'♥는 40, 10'},
+    {커버:'우드',색상:'딥브라운',박:'레드',Pressure:'20',Delay:'10',특이사항:'♥는 40, 10'},
+    {커버:'우드',색상:'딥브라운',박:'그린',Pressure:'20',Delay:'10',특이사항:'♥는 40, 10'},
+    {커버:'우드',색상:'딥브라운',박:'블랙',Pressure:'20',Delay:'10',특이사항:'♥는 40, 10'},
+    {커버:'우드',색상:'딥브라운',박:'블루',Pressure:'20',Delay:'10',특이사항:'♥는 40, 10'},
+    {커버:'우드',색상:'딥브라운',박:'크리스탈',Pressure:'50',Delay:'10',특이사항:'♥는 60, 10'},
+    {커버:'우드',색상:'블루',박:'불박',Pressure:'40',Delay:'100',특이사항:''},
+    {커버:'우드',색상:'블루',박:'유광 금',Pressure:'20',Delay:'10',특이사항:'♥는 40, 10'},
+    {커버:'우드',색상:'블루',박:'유광 은',Pressure:'20',Delay:'10',특이사항:'♥는 40, 10'},
+    {커버:'우드',색상:'블루',박:'무광 금',Pressure:'20',Delay:'10',특이사항:'♥는 40, 10'},
+    {커버:'우드',색상:'블루',박:'무광 은',Pressure:'20',Delay:'10',특이사항:'♥는 40, 10'},
+    {커버:'우드',색상:'블루',박:'레드',Pressure:'20',Delay:'10',특이사항:'♥는 40, 10'},
+    {커버:'우드',색상:'블루',박:'그린',Pressure:'20',Delay:'10',특이사항:'♥는 40, 10'},
+    {커버:'우드',색상:'블루',박:'블랙',Pressure:'20',Delay:'10',특이사항:'♥는 40, 10'},
+    {커버:'우드',색상:'블루',박:'블루',Pressure:'20',Delay:'10',특이사항:'♥는 40, 10'},
+    {커버:'우드',색상:'블루',박:'크리스탈',Pressure:'50',Delay:'10',특이사항:'♥는 60, 10'},
+    {커버:'젠틀',색상:'딥베이지',박:'불박',Pressure:'60',Delay:'100',특이사항:''},
+    {커버:'젠틀',색상:'딥베이지',박:'유광 금',Pressure:'35',Delay:'10',특이사항:''},
+    {커버:'젠틀',색상:'딥베이지',박:'유광 은',Pressure:'35',Delay:'10',특이사항:''},
+    {커버:'젠틀',색상:'딥베이지',박:'무광 금',Pressure:'35',Delay:'10',특이사항:''},
+    {커버:'젠틀',색상:'딥베이지',박:'무광 은',Pressure:'35',Delay:'10',특이사항:''},
+    {커버:'젠틀',색상:'딥베이지',박:'레드',Pressure:'35',Delay:'10',특이사항:''},
+    {커버:'젠틀',색상:'딥베이지',박:'그린',Pressure:'35',Delay:'10',특이사항:''},
+    {커버:'젠틀',색상:'딥베이지',박:'블랙',Pressure:'35',Delay:'10',특이사항:''},
+    {커버:'젠틀',색상:'딥베이지',박:'블루',Pressure:'40',Delay:'10',특이사항:''},
+    {커버:'젠틀',색상:'딥베이지',박:'크리스탈',Pressure:'45',Delay:'10',특이사항:'♥는45, 500'},
+    {커버:'젠틀',색상:'브라운',박:'불박',Pressure:'60',Delay:'100',특이사항:'잘 안 보임'},
+    {커버:'젠틀',색상:'브라운',박:'유광 금',Pressure:'35',Delay:'10',특이사항:''},
+    {커버:'젠틀',색상:'브라운',박:'유광 은',Pressure:'35',Delay:'10',특이사항:''},
+    {커버:'젠틀',색상:'브라운',박:'무광 금',Pressure:'35',Delay:'10',특이사항:''},
+    {커버:'젠틀',색상:'브라운',박:'무광 은',Pressure:'35',Delay:'10',특이사항:''},
+    {커버:'젠틀',색상:'브라운',박:'레드',Pressure:'35',Delay:'10',특이사항:''},
+    {커버:'젠틀',색상:'브라운',박:'그린',Pressure:'35',Delay:'10',특이사항:''},
+    {커버:'젠틀',색상:'브라운',박:'블랙',Pressure:'35',Delay:'10',특이사항:''},
+    {커버:'젠틀',색상:'브라운',박:'블루',Pressure:'40',Delay:'10',특이사항:''},
+    {커버:'젠틀',색상:'브라운',박:'크리스탈',Pressure:'45',Delay:'10',특이사항:'♥는45, 500'},
+    {커버:'리프',색상:'그린',박:'불박',Pressure:'40',Delay:'100',특이사항:''},
+    {커버:'리프',색상:'그린',박:'유광 금',Pressure:'10',Delay:'10',특이사항:''},
+    {커버:'리프',색상:'그린',박:'유광 은',Pressure:'10',Delay:'10',특이사항:''},
+    {커버:'리프',색상:'그린',박:'무광 금',Pressure:'10',Delay:'10',특이사항:''},
+    {커버:'리프',색상:'그린',박:'무광 은',Pressure:'10',Delay:'10',특이사항:''},
+    {커버:'리프',색상:'그린',박:'레드',Pressure:'10',Delay:'10',특이사항:''},
+    {커버:'리프',색상:'그린',박:'그린',Pressure:'10',Delay:'10',특이사항:''},
+    {커버:'리프',색상:'그린',박:'블랙',Pressure:'10',Delay:'10',특이사항:''},
+    {커버:'리프',색상:'그린',박:'블루',Pressure:'10',Delay:'10',특이사항:''},
+    {커버:'리프',색상:'그린',박:'크리스탈',Pressure:'20',Delay:'10',특이사항:''},
+    {커버:'리프',색상:'민트',박:'불박',Pressure:'40',Delay:'100',특이사항:''},
+    {커버:'리프',색상:'민트',박:'유광 금',Pressure:'10',Delay:'10',특이사항:''},
+    {커버:'리프',색상:'민트',박:'유광 은',Pressure:'10',Delay:'10',특이사항:''},
+    {커버:'리프',색상:'민트',박:'무광 금',Pressure:'10',Delay:'10',특이사항:''},
+    {커버:'리프',색상:'민트',박:'무광 은',Pressure:'10',Delay:'10',특이사항:''},
+    {커버:'리프',색상:'민트',박:'레드',Pressure:'10',Delay:'10',특이사항:''},
+    {커버:'리프',색상:'민트',박:'그린',Pressure:'10',Delay:'10',특이사항:''},
+    {커버:'리프',색상:'민트',박:'블랙',Pressure:'10',Delay:'10',특이사항:''},
+    {커버:'리프',색상:'민트',박:'블루',Pressure:'10',Delay:'10',특이사항:''},
+    {커버:'리프',색상:'민트',박:'크리스탈',Pressure:'20',Delay:'10',특이사항:''},
+    {커버:'캔디',색상:'레드',박:'불박',Pressure:'40',Delay:'100',특이사항:''},
+    {커버:'캔디',색상:'레드',박:'유광 금',Pressure:'10',Delay:'10',특이사항:''},
+    {커버:'캔디',색상:'레드',박:'유광 은',Pressure:'10',Delay:'10',특이사항:''},
+    {커버:'캔디',색상:'레드',박:'무광 금',Pressure:'10',Delay:'10',특이사항:''},
+    {커버:'캔디',색상:'레드',박:'무광 은',Pressure:'10',Delay:'10',특이사항:''},
+    {커버:'캔디',색상:'레드',박:'레드',Pressure:'10',Delay:'10',특이사항:''},
+    {커버:'캔디',색상:'레드',박:'그린',Pressure:'10',Delay:'10',특이사항:''},
+    {커버:'캔디',색상:'레드',박:'블랙',Pressure:'10',Delay:'10',특이사항:''},
+    {커버:'캔디',색상:'레드',박:'블루',Pressure:'20',Delay:'10',특이사항:''},
+    {커버:'캔디',색상:'레드',박:'크리스탈',Pressure:'20',Delay:'10',특이사항:''},
+    {커버:'캔디',색상:'화이트',박:'불박',Pressure:'40',Delay:'100',특이사항:''},
+    {커버:'캔디',색상:'화이트',박:'유광 금',Pressure:'10',Delay:'10',특이사항:''},
+    {커버:'캔디',색상:'화이트',박:'유광 은',Pressure:'10',Delay:'10',특이사항:''},
+    {커버:'캔디',색상:'화이트',박:'무광 금',Pressure:'10',Delay:'10',특이사항:''},
+    {커버:'캔디',색상:'화이트',박:'무광 은',Pressure:'10',Delay:'10',특이사항:''},
+    {커버:'캔디',색상:'화이트',박:'레드',Pressure:'10',Delay:'10',특이사항:''},
+    {커버:'캔디',색상:'화이트',박:'그린',Pressure:'10',Delay:'10',특이사항:''},
+    {커버:'캔디',색상:'화이트',박:'블랙',Pressure:'10',Delay:'10',특이사항:''},
+    {커버:'캔디',색상:'화이트',박:'블루',Pressure:'20',Delay:'10',특이사항:''},
+    {커버:'캔디',색상:'화이트',박:'크리스탈',Pressure:'20',Delay:'10',특이사항:''},
+    {커버:'타이백',색상:'그린',박:'불박',Pressure:'45',Delay:'100',특이사항:''},
+    {커버:'타이백',색상:'그린',박:'유광 금',Pressure:'25',Delay:'10',특이사항:''},
+    {커버:'타이백',색상:'그린',박:'유광 은',Pressure:'25',Delay:'10',특이사항:''},
+    {커버:'타이백',색상:'그린',박:'무광 금',Pressure:'25',Delay:'10',특이사항:''},
+    {커버:'타이백',색상:'그린',박:'무광 은',Pressure:'25',Delay:'10',특이사항:''},
+    {커버:'타이백',색상:'그린',박:'레드',Pressure:'25',Delay:'10',특이사항:''},
+    {커버:'타이백',색상:'그린',박:'그린',Pressure:'25',Delay:'10',특이사항:''},
+    {커버:'타이백',색상:'그린',박:'블랙',Pressure:'25',Delay:'10',특이사항:''},
+    {커버:'타이백',색상:'그린',박:'블루',Pressure:'25',Delay:'10',특이사항:''},
+    {커버:'타이백',색상:'그린',박:'크리스탈',Pressure:'35',Delay:'10',특이사항:''},
+    {커버:'타이백',색상:'네이비',박:'불박',Pressure:'45',Delay:'100',특이사항:''},
+    {커버:'타이백',색상:'네이비',박:'유광 금',Pressure:'25',Delay:'10',특이사항:''},
+    {커버:'타이백',색상:'네이비',박:'유광 은',Pressure:'25',Delay:'10',특이사항:''},
+    {커버:'타이백',색상:'네이비',박:'무광 금',Pressure:'25',Delay:'10',특이사항:''},
+    {커버:'타이백',색상:'네이비',박:'무광 은',Pressure:'25',Delay:'10',특이사항:''},
+    {커버:'타이백',색상:'네이비',박:'레드',Pressure:'25',Delay:'10',특이사항:''},
+    {커버:'타이백',색상:'네이비',박:'그린',Pressure:'25',Delay:'10',특이사항:''},
+    {커버:'타이백',색상:'네이비',박:'블랙',Pressure:'25',Delay:'10',특이사항:''},
+    {커버:'타이백',색상:'네이비',박:'블루',Pressure:'25',Delay:'10',특이사항:''},
+    {커버:'타이백',색상:'네이비',박:'크리스탈',Pressure:'35',Delay:'10',특이사항:''},
+  ];
+
+  /* ── 상태 ── */
+  let sel = { cover: null, color: null, foil: null };
+
+  function unique(arr) { return [...new Set(arr)]; }
+
+  /* ── 버튼 생성 헬퍼 ── */
+  function makeButtons(containerId, values, onClick) {
+    const grid = document.getElementById(containerId);
+    grid.innerHTML = '';
+    values.forEach(v => {
+      const btn = document.createElement('button');
+      btn.className = 'choice-btn';
+      btn.textContent = v;
+      btn.addEventListener('click', () => onClick(v, btn));
+      grid.appendChild(btn);
+    });
+  }
+
+  function highlightBtn(containerId, value) {
+    document.querySelectorAll('#' + containerId + ' .choice-btn').forEach(b => {
+      b.classList.toggle('selected', b.textContent === value);
+    });
+  }
+
+  function setCardState(id, state) {
+    const el = document.getElementById(id);
+    el.classList.remove('active', 'done', 'locked');
+    el.classList.add(state);
+  }
+
+  /* ── 브레드크럼 업데이트 ── */
+  function updateBreadcrumb() {
+    const bcCover = document.getElementById('bc-cover');
+    const bcColor = document.getElementById('bc-color');
+    const bcFoil  = document.getElementById('bc-foil');
+    bcCover.textContent = sel.cover || '커버';
+    bcColor.textContent = sel.color || '색상';
+    bcFoil.textContent  = sel.foil  || '박';
+    bcCover.classList.toggle('active', !!sel.cover);
+    bcColor.classList.toggle('active', !!sel.color);
+    bcFoil.classList.toggle('active',  !!sel.foil);
+  }
+
+  /* ── STEP 1: 커버 ── */
+  function initCover() {
+    const covers = unique(data.map(r => r['커버'])).sort();
+    makeButtons('grid-cover', covers, (v) => {
+      sel.cover = v; sel.color = null; sel.foil = null;
+      highlightBtn('grid-cover', v);
+      document.getElementById('badge-cover').textContent = v;
+      document.getElementById('change-cover').style.display = 'inline-block';
+      setCardState('card-cover', 'done');
+      initColor();
+      document.getElementById('result-section').style.display = 'none';
+      updateBreadcrumb();
+    });
+    setCardState('card-cover', 'active');
+  }
+
+  /* ── STEP 2: 색상 ── */
+  function initColor() {
+    const colors = unique(
+      data.filter(r => r['커버'] === sel.cover).map(r => r['색상'])
+    ).sort();
+    makeButtons('grid-color', colors, (v) => {
+      sel.color = v; sel.foil = null;
+      highlightBtn('grid-color', v);
+      document.getElementById('badge-color').textContent = v;
+      document.getElementById('change-color').style.display = 'inline-block';
+      setCardState('card-color', 'done');
+      initFoil();
+      document.getElementById('result-section').style.display = 'none';
+      updateBreadcrumb();
+    });
+    setCardState('card-color', 'active');
+    document.getElementById('badge-color').textContent = '';
+    document.getElementById('change-color').style.display = 'none';
+
+    // 색상 카드로 스크롤
+    setTimeout(() => {
+      document.getElementById('card-color').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }, 50);
+  }
+
+  /* ── STEP 3: 박 ── */
+  function initFoil() {
+    const foils = unique(
+      data.filter(r => r['커버'] === sel.cover && r['색상'] === sel.color).map(r => r['박'])
+    );
+    makeButtons('grid-foil', foils, (v) => {
+      sel.foil = v;
+      highlightBtn('grid-foil', v);
+      document.getElementById('badge-foil').textContent = v;
+      document.getElementById('change-foil').style.display = 'inline-block';
+      setCardState('card-foil', 'done');
+      showResult();
+      updateBreadcrumb();
+    });
+    setCardState('card-foil', 'active');
+    document.getElementById('badge-foil').textContent = '';
+    document.getElementById('change-foil').style.display = 'none';
+
+    setTimeout(() => {
+      document.getElementById('card-foil').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }, 50);
+  }
+
+  /* ── 결과 표시 ── */
+  function showResult() {
+    const row = data.find(r =>
+      r['커버'] === sel.cover && r['색상'] === sel.color && r['박'] === sel.foil
+    );
+    if (!row) return;
+
+    document.getElementById('result-title').textContent =
+      sel.cover + ' / ' + sel.color + ' / ' + sel.foil;
+    document.getElementById('val-pressure').textContent = row['Pressure'];
+    document.getElementById('val-delay').textContent    = row['Delay'];
+
+    const note = row['특이사항'];
+    const warnEl = document.getElementById('warning-box');
+    if (note) {
+      document.getElementById('val-note').textContent = note;
+      warnEl.style.display = 'block';
+    } else {
+      warnEl.style.display = 'none';
+    }
+
+    document.getElementById('result-section').style.display = 'block';
+    setTimeout(() => {
+      document.getElementById('result-section').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }, 50);
+  }
+
+  /* ── 변경 (부분 초기화) ── */
+  window.resetFrom = function(step) {
+    if (step === 'cover') {
+      sel.cover = null; sel.color = null; sel.foil = null;
+      document.getElementById('badge-cover').textContent = '';
+      document.getElementById('change-cover').style.display = 'none';
+      setCardState('card-cover', 'active');
+      setCardState('card-color', 'locked');
+      setCardState('card-foil',  'locked');
+      document.getElementById('grid-color').innerHTML = '';
+      document.getElementById('grid-foil').innerHTML  = '';
+      document.getElementById('badge-color').textContent = '';
+      document.getElementById('badge-foil').textContent  = '';
+      document.getElementById('change-color').style.display = 'none';
+      document.getElementById('change-foil').style.display  = 'none';
+      document.getElementById('result-section').style.display = 'none';
+      document.querySelectorAll('#grid-cover .choice-btn').forEach(b => b.classList.remove('selected'));
+    } else if (step === 'color') {
+      sel.color = null; sel.foil = null;
+      document.getElementById('badge-color').textContent = '';
+      document.getElementById('change-color').style.display = 'none';
+      setCardState('card-color', 'active');
+      setCardState('card-foil',  'locked');
+      document.getElementById('grid-foil').innerHTML  = '';
+      document.getElementById('badge-foil').textContent  = '';
+      document.getElementById('change-foil').style.display  = 'none';
+      document.getElementById('result-section').style.display = 'none';
+      document.querySelectorAll('#grid-color .choice-btn').forEach(b => b.classList.remove('selected'));
+    } else if (step === 'foil') {
+      sel.foil = null;
+      document.getElementById('badge-foil').textContent = '';
+      document.getElementById('change-foil').style.display = 'none';
+      setCardState('card-foil', 'active');
+      document.getElementById('result-section').style.display = 'none';
+      document.querySelectorAll('#grid-foil .choice-btn').forEach(b => b.classList.remove('selected'));
+    }
+    updateBreadcrumb();
+  };
+
+  /* ── 전체 초기화 ── */
+  window.resetAll = function() {
+    sel = { cover: null, color: null, foil: null };
+    initCover();
+    setCardState('card-color', 'locked');
+    setCardState('card-foil',  'locked');
+    document.getElementById('grid-color').innerHTML = '';
+    document.getElementById('grid-foil').innerHTML  = '';
+    ['badge-cover','badge-color','badge-foil'].forEach(id => {
+      document.getElementById(id).textContent = '';
+    });
+    ['change-cover','change-color','change-foil'].forEach(id => {
+      document.getElementById(id).style.display = 'none';
+    });
+    document.getElementById('result-section').style.display = 'none';
+    updateBreadcrumb();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  /* ── 시작 ── */
+  initCover();
+  updateBreadcrumb();
+
+})(); // init
+</script>
+</body>
+</html>
