@@ -561,7 +561,20 @@ function startApp(data) {
       sel.cover + ' / ' + sel.color + ' / ' + sel.foil;
     document.getElementById('val-pressure').textContent = row['Pressure'];
     document.getElementById('val-delay').textContent    = row['Delay'];
-    document.getElementById('val-note').textContent     = row['특이사항'] || '';
+    var note = row['특이사항'] || '';
+    document.getElementById('val-note').textContent = note;
+    var noteCard = document.getElementById('note-card');
+    if (note) {
+      noteCard.style.background = '#fef2f2';
+      noteCard.style.border = '2px solid #ef4444';
+      document.getElementById('val-note').style.color = '#b91c1c';
+      document.getElementById('val-note').style.fontWeight = '700';
+    } else {
+      noteCard.style.background = '';
+      noteCard.style.border = '';
+      document.getElementById('val-note').style.color = '';
+      document.getElementById('val-note').style.fontWeight = '';
+    }
 
     document.getElementById('result-section').style.display = 'block';
     setTimeout(() => {
