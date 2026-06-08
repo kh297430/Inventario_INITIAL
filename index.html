@@ -293,7 +293,7 @@
 
 <header>
   <h1>인벤타리오 자동 각인기</h1>
-  <p>커버 → 색상 → 박 순서로 선택하세요</p>
+  <p>커버 → 색상 → 박지 코드 순서로 선택하세요</p>
 </header>
 
 <div id="breadcrumb" style="display:none">
@@ -301,7 +301,7 @@
   <span class="bc-sep">›</span>
   <span id="bc-color" class="bc-item">색상</span>
   <span class="bc-sep">›</span>
-  <span id="bc-foil"  class="bc-item">박</span>
+  <span id="bc-foil"  class="bc-item">박지코드</span>
 </div>
 
 <div id="main" style="display:none">
@@ -329,7 +329,7 @@
   <!-- STEP 3: 박 -->
   <div class="step-card locked" id="card-foil">
     <div class="step-header">
-      <span class="step-title">STEP 3 &nbsp;박 종류 선택</span>
+      <span class="step-title">STEP 3 &nbsp;박지 코드 선택</span>
       <span class="step-selected-badge" id="badge-foil"></span>
       <button class="change-btn" id="change-foil" onclick="resetFrom('foil')" style="display:none">변경</button>
     </div>
@@ -480,7 +480,12 @@ function startApp(data) {
     const bcFoil  = document.getElementById('bc-foil');
     bcCover.textContent = sel.cover || '커버';
     bcColor.textContent = sel.color || '색상';
-    bcFoil.textContent  = sel.foil  || '박';
+    if (sel.foil) {
+      const row = data.find(r => r['커버'] === sel.cover && r['색상'] === sel.color && r['박지코드'] === sel.foil);
+      bcFoil.textContent = row ? row['박'] : sel.foil;
+    } else {
+      bcFoil.textContent = '박지코드';
+    }
     bcCover.classList.toggle('active', !!sel.cover);
     bcColor.classList.toggle('active', !!sel.color);
     bcFoil.classList.toggle('active',  !!sel.foil);
@@ -527,15 +532,18 @@ function startApp(data) {
     }, 50);
   }
 
-  /* ── STEP 3: 박 ── */
+  /* ── STEP 3: 박지코드 ── */
   function initFoil() {
     const foils = unique(
-      data.filter(r => r['커버'] === sel.cover && r['색상'] === sel.color).map(r => r['박'])
+      data.filter(r => r['커버'] === sel.cover && r['색상'] === sel.color).map(r => r['박지코드'])
     );
     makeButtons('grid-foil', foils, (v) => {
       sel.foil = v;
       highlightBtn('grid-foil', v);
-      document.getElementById('badge-foil').textContent = v;
+      // 선택 후 뱃지/브레드크럼에는 박지색 표시
+      const row = data.find(r => r['커버'] === sel.cover && r['색상'] === sel.color && r['박지코드'] === v);
+      const foilColor = row ? row['박'] : v;
+      document.getElementById('badge-foil').textContent = foilColor;
       document.getElementById('change-foil').style.display = 'inline-block';
       setCardState('card-foil', 'done');
       showResult();
@@ -553,12 +561,12 @@ function startApp(data) {
   /* ── 결과 표시 ── */
   function showResult() {
     const row = data.find(r =>
-      r['커버'] === sel.cover && r['색상'] === sel.color && r['박'] === sel.foil
+      r['커버'] === sel.cover && r['색상'] === sel.color && r['박지코드'] === sel.foil
     );
     if (!row) return;
 
     document.getElementById('result-title').textContent =
-      sel.cover + ' / ' + sel.color + ' / ' + sel.foil;
+      sel.cover + ' / ' + sel.color + ' / ' + row['박'];
     document.getElementById('val-pressure').textContent = row['Pressure'];
     document.getElementById('val-delay').textContent    = row['Delay'];
     var note = row['특이사항'] || '';
@@ -650,11 +658,11 @@ function startApp(data) {
 window.openInlineEdit = function() {
   var s = window._sel;
   var row = editData.find(function(r) {
-    return r['커버'] === s.cover && r['색상'] === s.color && r['박'] === s.foil;
+    return r['커버'] === s.cover && r['색상'] === s.color && r['박지코드'] === s.foil;
   });
   if (!row) return;
   editingIndex = editData.indexOf(row);
-  document.getElementById('row-context').textContent = s.cover + ' / ' + s.color + ' / ' + s.foil;
+  document.getElementById('row-context').textContent = s.cover + ' / ' + s.color + ' / ' + row['박'];
   document.getElementById('f-pressure').value = row['Pressure'] || '';
   document.getElementById('f-delay').value    = row['Delay']    || '';
   document.getElementById('f-note').value     = row['특이사항'] || '';
